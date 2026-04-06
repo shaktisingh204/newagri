@@ -8,25 +8,25 @@ export default function HomePage() {
       <main className="flex-1">
         {/* Hero */}
         <section className="bg-gradient-to-br from-green-800 via-green-700 to-emerald-600 text-white">
-          <div className="max-w-7xl mx-auto px-4 py-24 sm:px-6 lg:px-8 text-center">
-            <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl">
+          <div className="max-w-7xl mx-auto px-4 py-16 sm:py-24 sm:px-6 lg:px-8 text-center">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight">
               AgriSphere
             </h1>
-            <p className="mt-6 text-xl text-green-100 max-w-3xl mx-auto">
+            <p className="mt-4 sm:mt-6 text-base sm:text-xl text-green-100 max-w-3xl mx-auto">
               Agricultural intelligence platform — explore crop calendars across countries and
               agro-ecological zones, compare crops side-by-side, and visualize seasonal patterns on
               interactive maps.
             </p>
-            <div className="mt-10 flex justify-center gap-4">
+            <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
               <Link
                 href="/auth/register"
-                className="bg-white text-green-800 font-semibold px-8 py-3 rounded-lg hover:bg-green-50 transition-colors"
+                className="bg-white text-green-800 font-semibold px-8 py-3 rounded-lg hover:bg-green-50 transition-colors text-center"
               >
                 Get Started
               </Link>
               <Link
                 href="/dashboard"
-                className="border-2 border-white text-white font-semibold px-8 py-3 rounded-lg hover:bg-white/10 transition-colors"
+                className="border-2 border-white text-white font-semibold px-8 py-3 rounded-lg hover:bg-white/10 transition-colors text-center"
               >
                 Explore Dashboard
               </Link>
@@ -35,10 +35,10 @@ export default function HomePage() {
         </section>
 
         {/* Features */}
-        <section className="py-20 bg-white">
+        <section className="py-12 sm:py-20 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-3xl font-bold text-center mb-16">Platform Features</h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <h2 className="text-2xl sm:text-3xl font-bold text-center mb-10 sm:mb-16">Platform Features</h2>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
               {[
                 {
                   title: "Crop Calendar Explorer",
@@ -65,9 +65,9 @@ export default function HomePage() {
                   desc: "Upload PDF and XLSX files — parse, normalize, validate with flagged-row reporting, and preview before commit.",
                 },
               ].map((f) => (
-                <div key={f.title} className="bg-gray-50 rounded-xl p-6 hover:shadow-lg transition-shadow">
+                <div key={f.title} className="bg-gray-50 rounded-xl p-5 sm:p-6 hover:shadow-lg transition-shadow">
                   <h3 className="text-lg font-semibold text-green-800 mb-2">{f.title}</h3>
-                  <p className="text-gray-600">{f.desc}</p>
+                  <p className="text-gray-600 text-sm sm:text-base">{f.desc}</p>
                 </div>
               ))}
             </div>

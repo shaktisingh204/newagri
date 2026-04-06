@@ -32,7 +32,7 @@ export default function MapInner({ regions }: { regions: RegionData[] }) {
       : [20, 0];
 
   return (
-    <div className="h-[500px] rounded-xl overflow-hidden shadow-sm border">
+    <div className="h-[300px] sm:h-[400px] lg:h-[500px] rounded-xl overflow-hidden shadow-sm border">
       <MapContainer center={center} zoom={3} className="h-full w-full" scrollWheelZoom>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

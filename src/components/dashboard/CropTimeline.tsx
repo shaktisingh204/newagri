@@ -1,5 +1,10 @@
 "use client";
 
+import { useState } from "react";
+import { toggleFavorite } from "@/actions/favorites";
+import toast from "react-hot-toast";
+import Link from "next/link";
+
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 const PHASE_COLORS: Record<string, string> = {
@@ -31,10 +36,33 @@ interface CalendarEntry {
   phases: Phase[];
 }
 
-export default function CropTimeline({ calendars }: { calendars: CalendarEntry[] }) {
+export default function CropTimeline({
+  calendars,
+  favoriteIds,
+}: {
+  calendars: CalendarEntry[];
+  favoriteIds: string[];
+}) {
+  const [favSet, setFavSet] = useState<Set<string>>(new Set(favoriteIds));
+
+  async function handleToggleFav(id: string) {
+    try {
+      const result = await toggleFavorite(id);
+      setFavSet((prev) => {
+        const next = new Set(prev);
+        if (result.favorited) next.add(id);
+        else next.delete(id);
+        return next;
+      });
+      toast.success(result.favorited ? "Added to favorites" : "Removed from favorites");
+    } catch {
+      toast.error("Failed to update favorite");
+    }
+  }
+
   if (calendars.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border p-12 text-center">
+      <div className="bg-white rounded-xl shadow-sm border p-8 sm:p-12 text-center">
         <p className="text-gray-500 text-lg">No crop calendars found. Try adjusting your filters.</p>
       </div>
     );
@@ -43,7 +71,7 @@ export default function CropTimeline({ calendars }: { calendars: CalendarEntry[]
   return (
     <div className="space-y-4">
       {/* Legend */}
-      <div className="bg-white rounded-xl shadow-sm border p-4 flex items-center gap-6">
+      <div className="bg-white rounded-xl shadow-sm border p-3 sm:p-4 flex flex-wrap items-center gap-3 sm:gap-6">
         <span className="text-sm font-medium text-gray-600">Legend:</span>
         {Object.entries(PHASE_COLORS)
           .filter(([k]) => k !== "idle")
@@ -58,23 +86,35 @@ export default function CropTimeline({ calendars }: { calendars: CalendarEntry[]
       {/* Timeline cards */}
       {calendars.map((cal) => (
         <div key={cal._id} className="bg-white rounded-xl shadow-sm border overflow-hidden">
-          <div className="px-6 py-4 border-b bg-gray-50">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-lg text-gray-800">{cal.cropName}</h3>
-              <div className="flex items-center gap-3 text-sm text-gray-500">
-                <span>{cal.country}</span>
-                <span>/</span>
-                <span>{cal.state}</span>
-                <span>/</span>
-                <span>{cal.region}</span>
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b bg-gray-50">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <Link href={`/crops/${cal._id}`} className="font-semibold text-base sm:text-lg text-gray-800 hover:text-green-700 transition-colors">
+                {cal.cropName}
+              </Link>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <span className="text-xs sm:text-sm text-gray-500">
+                  {cal.country} / {cal.state}
+                  {cal.region ? ` / ${cal.region}` : ""}
+                </span>
                 <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs font-medium">
                   {cal.season}
                 </span>
+                <button
+                  onClick={() => handleToggleFav(cal._id)}
+                  className={`text-sm px-2 py-1 rounded transition-colors ${
+                    favSet.has(cal._id)
+                      ? "text-red-500 hover:text-red-600"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
+                  title={favSet.has(cal._id) ? "Remove from favorites" : "Add to favorites"}
+                >
+                  {favSet.has(cal._id) ? "\u2665" : "\u2661"}
+                </button>
               </div>
             </div>
           </div>
-          <div className="px-6 py-4">
-            <div className="grid grid-cols-12 gap-1">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 overflow-x-auto">
+            <div className="grid grid-cols-12 gap-1 min-w-[480px]">
               {MONTHS.map((m, i) => {
                 const phase = cal.phases?.find((p) => p.month === i + 1);
                 const phaseType = phase?.phase || "idle";

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getUploads } from "@/actions/ingestion";
+import { getUploads, deleteUpload } from "@/actions/ingestion";
+import toast from "react-hot-toast";
 
 interface UploadRecord {
   _id: string;
@@ -22,6 +23,20 @@ export default function UploadHistory({ onSelect }: { onSelect: (id: string) => 
     getUploads().then(setUploads);
   }, []);
 
+  async function handleDelete(id: string) {
+    try {
+      const result = await deleteUpload(id);
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      setUploads((prev) => prev.filter((u) => u._id !== id));
+      toast.success("Upload deleted");
+    } catch {
+      toast.error("Failed to delete upload");
+    }
+  }
+
   if (uploads.length === 0) {
     return (
       <div className="bg-white rounded-xl shadow-sm border p-6 text-center text-gray-400">
@@ -40,10 +55,50 @@ export default function UploadHistory({ onSelect }: { onSelect: (id: string) => 
 
   return (
     <div className="bg-white rounded-xl shadow-sm border">
-      <div className="px-6 py-4 border-b">
+      <div className="px-4 sm:px-6 py-4 border-b">
         <h2 className="text-lg font-semibold">Upload History</h2>
       </div>
-      <div className="overflow-x-auto">
+
+      {/* Mobile card view */}
+      <div className="sm:hidden divide-y">
+        {uploads.map((u) => (
+          <div key={u._id} className="p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-sm truncate mr-2">{u.fileName}</span>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${statusColor[u.status] || ""}`}>
+                {u.status}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-gray-500">
+              <span className="uppercase">{u.fileType}</span>
+              <span>{u.validRows}/{u.totalRows} rows</span>
+              <span>{u.flaggedRows?.length || 0} flagged</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-400">{new Date(u.createdAt).toLocaleDateString()}</span>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => onSelect(u._id)}
+                  className="text-green-700 text-sm font-medium"
+                >
+                  Preview
+                </button>
+                {u.status !== "committed" && (
+                  <button
+                    onClick={() => handleDelete(u._id)}
+                    className="text-red-500 text-sm font-medium"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop table view */}
+      <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-gray-50">
@@ -53,7 +108,7 @@ export default function UploadHistory({ onSelect }: { onSelect: (id: string) => 
               <th className="px-4 py-3 text-left">Rows</th>
               <th className="px-4 py-3 text-left">Flagged</th>
               <th className="px-4 py-3 text-left">Date</th>
-              <th className="px-4 py-3 text-left">Action</th>
+              <th className="px-4 py-3 text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -70,12 +125,22 @@ export default function UploadHistory({ onSelect }: { onSelect: (id: string) => 
                 <td className="px-4 py-3">{u.flaggedRows?.length || 0}</td>
                 <td className="px-4 py-3 text-gray-500">{new Date(u.createdAt).toLocaleDateString()}</td>
                 <td className="px-4 py-3">
-                  <button
-                    onClick={() => onSelect(u._id)}
-                    className="text-green-700 hover:underline text-sm font-medium"
-                  >
-                    Preview
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => onSelect(u._id)}
+                      className="text-green-700 hover:underline text-sm font-medium"
+                    >
+                      Preview
+                    </button>
+                    {u.status !== "committed" && (
+                      <button
+                        onClick={() => handleDelete(u._id)}
+                        className="text-red-500 hover:underline text-sm font-medium"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

@@ -18,23 +18,23 @@ export default function BarChartWidget({
 }) {
   if (data.length === 0) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border p-6">
-        <h3 className="font-semibold text-gray-800 mb-4">{title}</h3>
+      <div className="bg-white rounded-xl shadow-sm border p-4 sm:p-6">
+        <h3 className="font-semibold text-gray-800 mb-4 text-sm sm:text-base">{title}</h3>
         <p className="text-gray-400 text-center py-8">No data available yet</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border p-6">
-      <h3 className="font-semibold text-gray-800 mb-4">{title}</h3>
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+    <div className="bg-white rounded-xl shadow-sm border p-4 sm:p-6">
+      <h3 className="font-semibold text-gray-800 mb-4 text-sm sm:text-base">{title}</h3>
+      <ResponsiveContainer width="100%" height={250} className="sm:!h-[300px]">
+        <BarChart data={data} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis dataKey="name" tick={{ fontSize: 12 }} angle={-45} textAnchor="end" height={80} />
-          <YAxis tick={{ fontSize: 12 }} />
+          <XAxis dataKey="name" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={80} />
+          <YAxis tick={{ fontSize: 11 }} />
           <Tooltip
-            contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb" }}
+            contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "13px" }}
           />
           <Bar dataKey="count" fill={color} radius={[4, 4, 0, 0]} />
         </BarChart>

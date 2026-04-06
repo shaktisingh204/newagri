@@ -27,14 +27,14 @@ export default function FileUploader({ onUploadComplete }: { onUploadComplete: (
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border p-6">
+    <div className="bg-white rounded-xl shadow-sm border p-4 sm:p-6">
       <h2 className="text-lg font-semibold mb-4">Upload Data File</h2>
       <p className="text-sm text-gray-500 mb-4">
         Supported formats: XLSX, PDF. Files are parsed, normalized, and validated before commit.
       </p>
 
       <form action={handleSubmit}>
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-green-400 transition-colors">
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 sm:p-8 text-center hover:border-green-400 transition-colors">
           <input
             type="file"
             name="file"
@@ -46,14 +46,14 @@ export default function FileUploader({ onUploadComplete }: { onUploadComplete: (
         <button
           type="submit"
           disabled={isPending}
-          className="mt-4 px-6 py-2.5 bg-green-700 text-white rounded-lg font-semibold hover:bg-green-600 disabled:opacity-50 transition-colors"
+          className="mt-4 w-full sm:w-auto px-6 py-2.5 bg-green-700 text-white rounded-lg font-semibold hover:bg-green-600 disabled:opacity-50 transition-colors"
         >
           {isPending ? "Uploading & Parsing..." : "Upload & Parse"}
         </button>
       </form>
 
       {result?.error && (
-        <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+        <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
           {result.error}
         </div>
       )}

@@ -43,10 +43,10 @@ export default function UploadPreview({ uploadId }: { uploadId: string | null })
   return (
     <div className="space-y-6">
       {/* Summary */}
-      <div className="bg-white rounded-xl shadow-sm border p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-semibold">Preview: {data.fileName}</h2>
+      <div className="bg-white rounded-xl shadow-sm border p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold truncate">Preview: {data.fileName}</h2>
             <p className="text-sm text-gray-500">
               Status: <span className="font-medium capitalize">{data.status}</span> |
               Total: {data.totalRows} | Valid: {data.validRows} | Flagged: {data.flaggedRows.length}
@@ -56,7 +56,7 @@ export default function UploadPreview({ uploadId }: { uploadId: string | null })
             <button
               onClick={handleCommit}
               disabled={isPending}
-              className="px-6 py-2.5 bg-green-700 text-white rounded-lg font-semibold hover:bg-green-600 disabled:opacity-50 transition-colors"
+              className="shrink-0 px-6 py-2.5 bg-green-700 text-white rounded-lg font-semibold hover:bg-green-600 disabled:opacity-50 transition-colors"
             >
               {isPending ? "Committing..." : "Commit to Database"}
             </button>
@@ -77,12 +77,12 @@ export default function UploadPreview({ uploadId }: { uploadId: string | null })
 
       {/* Flagged Rows */}
       {data.flaggedRows.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border p-6">
+        <div className="bg-white rounded-xl shadow-sm border p-4 sm:p-6">
           <h3 className="text-lg font-semibold text-red-700 mb-4">
             Flagged Rows ({data.flaggedRows.length})
           </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto -mx-4 sm:mx-0">
+            <table className="w-full text-sm min-w-[500px]">
               <thead>
                 <tr className="border-b bg-red-50">
                   <th className="px-4 py-2 text-left">Row</th>
@@ -107,16 +107,15 @@ export default function UploadPreview({ uploadId }: { uploadId: string | null })
       )}
 
       {/* Data Preview */}
-      <div className="bg-white rounded-xl shadow-sm border p-6">
+      <div className="bg-white rounded-xl shadow-sm border p-4 sm:p-6">
         <h3 className="text-lg font-semibold mb-4">Valid Data Preview (first 20 rows)</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <table className="w-full text-sm min-w-[600px]">
             <thead>
               <tr className="border-b bg-gray-50">
                 <th className="px-3 py-2 text-left">Crop</th>
                 <th className="px-3 py-2 text-left">Country</th>
                 <th className="px-3 py-2 text-left">State</th>
-                <th className="px-3 py-2 text-left">Region</th>
                 <th className="px-3 py-2 text-left">Season</th>
                 <th className="px-3 py-2 text-left">Sowing</th>
                 <th className="px-3 py-2 text-left">Growing</th>
@@ -129,7 +128,6 @@ export default function UploadPreview({ uploadId }: { uploadId: string | null })
                   <td className="px-3 py-2 font-medium">{String(row.cropName || "")}</td>
                   <td className="px-3 py-2">{String(row.country || "")}</td>
                   <td className="px-3 py-2">{String(row.state || "")}</td>
-                  <td className="px-3 py-2">{String(row.region || "")}</td>
                   <td className="px-3 py-2">{String(row.season || "")}</td>
                   <td className="px-3 py-2 text-xs">{String(row.sowingMonths || "")}</td>
                   <td className="px-3 py-2 text-xs">{String(row.growingMonths || "")}</td>

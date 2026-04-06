@@ -14,11 +14,11 @@ export default function StatsBar({ stats }: { stats: Stats }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
       {items.map((item) => (
-        <div key={item.label} className="bg-white rounded-xl shadow-sm border p-4 text-center">
-          <div className="text-3xl font-bold text-green-700">{item.value}</div>
-          <div className="text-sm text-gray-500 mt-1">{item.label}</div>
+        <div key={item.label} className="bg-white rounded-xl shadow-sm border p-3 sm:p-4 text-center">
+          <div className="text-2xl sm:text-3xl font-bold text-green-700">{item.value}</div>
+          <div className="text-xs sm:text-sm text-gray-500 mt-1">{item.label}</div>
         </div>
       ))}
     </div>

@@ -19,7 +19,7 @@ export default function FilterPanel({ countries, crops, seasons, months }: Filte
   const [states, setStates] = useState<string[]>([]);
   const [regions, setRegions] = useState<string[]>([]);
 
-  const currentCountry = searchParams.get("country") || "";
+  const currentCountry = searchParams.get("country") || "India";
   const currentState = searchParams.get("state") || "";
   const currentRegion = searchParams.get("region") || "";
   const currentCrop = searchParams.get("crop") || "";

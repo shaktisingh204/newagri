@@ -18,7 +18,7 @@ const MapInner = dynamic(() => import("./MapInner"), { ssr: false, loading: () =
 
 function MapPlaceholder() {
   return (
-    <div className="h-[500px] bg-gray-100 rounded-xl flex items-center justify-center">
+    <div className="h-[300px] sm:h-[400px] lg:h-[500px] bg-gray-100 rounded-xl flex items-center justify-center">
       <p className="text-gray-400">Loading map...</p>
     </div>
   );

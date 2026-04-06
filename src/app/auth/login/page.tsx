@@ -2,23 +2,43 @@
 
 import { loginAction } from "@/actions/auth";
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
+import toast from "react-hot-toast";
 
 export default function LoginPage() {
   const [state, formAction, pending] = useActionState(loginAction, null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (state?.error) {
+      toast.error(state.error);
+    }
+  }, [state]);
+
+  function handleSubmit(formData: FormData) {
+    const email = (formData.get("email") as string)?.trim();
+    const password = formData.get("password") as string;
+
+    if (!email || !password) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    formAction(formData);
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
         <h1 className="text-2xl font-bold text-center text-green-800 mb-6">Sign in to AgriSphere</h1>
 
-        {state?.error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-            {state.error}
-          </div>
-        )}
-
-        <form action={formAction} className="space-y-4">
+        <form ref={formRef} action={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
               Email
@@ -28,6 +48,7 @@ export default function LoginPage() {
               id="email"
               name="email"
               required
+              placeholder="you@example.com"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           </div>
@@ -40,6 +61,7 @@ export default function LoginPage() {
               id="password"
               name="password"
               required
+              placeholder="Enter your password"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           </div>

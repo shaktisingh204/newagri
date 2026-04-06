@@ -2,23 +2,54 @@
 
 import { registerAction } from "@/actions/auth";
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
+import toast from "react-hot-toast";
 
 export default function RegisterPage() {
   const [state, formAction, pending] = useActionState(registerAction, null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (state?.error) {
+      toast.error(state.error);
+    }
+  }, [state]);
+
+  function handleSubmit(formData: FormData) {
+    const name = (formData.get("name") as string)?.trim();
+    const email = (formData.get("email") as string)?.trim();
+    const password = formData.get("password") as string;
+
+    if (!name || !email || !password) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+
+    if (name.length < 2) {
+      toast.error("Name must be at least 2 characters");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    if (password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    formAction(formData);
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
         <h1 className="text-2xl font-bold text-center text-green-800 mb-6">Create an Account</h1>
 
-        {state?.error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-            {state.error}
-          </div>
-        )}
-
-        <form action={formAction} className="space-y-4">
+        <form ref={formRef} action={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
               Name
@@ -28,6 +59,7 @@ export default function RegisterPage() {
               id="name"
               name="name"
               required
+              placeholder="Your full name"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           </div>
@@ -40,6 +72,7 @@ export default function RegisterPage() {
               id="email"
               name="email"
               required
+              placeholder="you@example.com"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           </div>
@@ -53,6 +86,7 @@ export default function RegisterPage() {
               name="password"
               required
               minLength={6}
+              placeholder="At least 6 characters"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
             />
           </div>

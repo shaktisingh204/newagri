@@ -3,7 +3,7 @@ import { jwtVerify } from "jose";
 
 const secret = new TextEncoder().encode(process.env.JWT_SECRET || "fallback-secret");
 
-const protectedPaths = ["/dashboard", "/compare", "/analytics"];
+const protectedPaths = ["/dashboard", "/compare", "/analytics", "/profile", "/seasonal", "/favorites", "/crops"];
 const adminPaths = ["/admin"];
 
 export default async function proxy(request: NextRequest) {
@@ -34,5 +34,5 @@ export default async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/compare/:path*", "/analytics/:path*", "/admin/:path*"],
+  matcher: ["/dashboard/:path*", "/compare/:path*", "/analytics/:path*", "/admin/:path*", "/profile/:path*", "/seasonal/:path*", "/favorites/:path*", "/crops/:path*"],
 };

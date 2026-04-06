@@ -2,8 +2,6 @@
 
 import { connectDB } from "@/lib/db";
 import { CropCalendar } from "@/models/CropCalendar";
-import { Crop } from "@/models/Crop";
-import { Region } from "@/models/Region";
 import { UsageEvent } from "@/models/UsageEvent";
 import { getCurrentUser } from "@/lib/auth";
 
@@ -16,15 +14,13 @@ export interface CalendarFilters {
   month?: string;
 }
 
-export async function getFilterOptions(tenantId?: string) {
+export async function getFilterOptions() {
   await connectDB();
-  const user = await getCurrentUser();
-  const tid = tenantId || user?.tenantId || "default";
 
   const [countries, crops, seasons] = await Promise.all([
-    Region.distinct("country", { tenantId: tid }),
-    Crop.distinct("name", { tenantId: tid }),
-    CropCalendar.distinct("season", { tenantId: tid }),
+    CropCalendar.distinct("country"),
+    CropCalendar.distinct("cropName"),
+    CropCalendar.distinct("season"),
   ]);
 
   return {
@@ -40,27 +36,22 @@ export async function getFilterOptions(tenantId?: string) {
 
 export async function getStatesForCountry(country: string) {
   await connectDB();
-  const user = await getCurrentUser();
-  const tid = user?.tenantId || "default";
-  const states = await Region.distinct("state", { country, tenantId: tid });
+  const states = await CropCalendar.distinct("state", { country });
   return states.sort();
 }
 
 export async function getRegionsForState(country: string, state: string) {
   await connectDB();
-  const user = await getCurrentUser();
-  const tid = user?.tenantId || "default";
-  const regions = await Region.distinct("region", { country, state, tenantId: tid });
-  return regions.sort();
+  const regions = await CropCalendar.distinct("region", { country, state });
+  return regions.filter(Boolean).sort();
 }
 
 export async function searchCropCalendars(filters: CalendarFilters) {
   await connectDB();
   const user = await getCurrentUser();
-  const tid = user?.tenantId || "default";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const query: any = { tenantId: tid };
+  const query: any = {};
 
   if (filters.country) query.country = filters.country;
   if (filters.state) query.state = filters.state;
@@ -85,14 +76,14 @@ export async function searchCropCalendars(filters: CalendarFilters) {
   const calendars = await CropCalendar.find(query).lean();
 
   // Track usage
-  if (filters.crop) {
+  if (user && filters.crop) {
     await UsageEvent.create({
       eventType: "crop_search",
       cropName: filters.crop,
       country: filters.country,
       filters: filters as Record<string, string>,
-      tenantId: tid,
-      userId: user?.userId,
+      tenantId: user.tenantId,
+      userId: user.userId,
     });
   }
 
@@ -107,20 +98,60 @@ export async function getCropCalendarById(id: string) {
 
 export async function getRegionsWithCoordinates() {
   await connectDB();
-  const user = await getCurrentUser();
-  const tid = user?.tenantId || "default";
-  const regions = await Region.find({ tenantId: tid }).lean();
-  return JSON.parse(JSON.stringify(regions));
+
+  // Get unique country/state combinations from CropCalendar for map display
+  const regions = await CropCalendar.aggregate([
+    { $group: { _id: { country: "$country", state: "$state" }, count: { $sum: 1 } } },
+    { $project: { country: "$_id.country", state: "$_id.state", count: 1, _id: 0 } },
+  ]);
+
+  return regions;
+}
+
+export async function getInSeasonCrops(month: number) {
+  await connectDB();
+
+  const calendars = await CropCalendar.find({
+    phases: { $elemMatch: { month, phase: { $ne: "idle" } } },
+  }).lean();
+
+  return JSON.parse(
+    JSON.stringify(
+      calendars.map((cal) => {
+        const phase = cal.phases.find((p: { month: number; phase: string }) => p.month === month);
+        return {
+          _id: cal._id,
+          cropName: cal.cropName,
+          country: cal.country,
+          state: cal.state,
+          season: cal.season,
+          currentPhase: phase?.phase || "idle",
+        };
+      })
+    )
+  );
+}
+
+export async function searchCropsAutocomplete(query: string) {
+  await connectDB();
+
+  if (!query || query.length < 2) return [];
+
+  const calendars = await CropCalendar.find({
+    cropName: { $regex: query, $options: "i" },
+  })
+    .select("cropName country state season _id")
+    .limit(10)
+    .lean();
+
+  return JSON.parse(JSON.stringify(calendars));
 }
 
 export async function getCropComparisonData(cropNames: string[]) {
   await connectDB();
-  const user = await getCurrentUser();
-  const tid = user?.tenantId || "default";
 
   const calendars = await CropCalendar.find({
     cropName: { $in: cropNames },
-    tenantId: tid,
   }).lean();
 
   return JSON.parse(JSON.stringify(calendars));
