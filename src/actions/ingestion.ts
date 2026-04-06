@@ -85,10 +85,10 @@ export async function uploadAndParseFile(formData: FormData) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pdf = (pdfParse as any).default || pdfParse;
     const pdfData = await pdf(buffer);
-    const lines = pdfData.text.split("\n").filter((l) => l.trim());
+    const lines: string[] = pdfData.text.split("\n").filter((l: string) => l.trim());
     // Assume CSV-like lines in PDF: crop,country,state,region,season,lat,lon,aez,sowing,growing,harvesting
     for (const line of lines) {
-      const parts = line.split(",").map((s) => s.trim());
+      const parts = line.split(",").map((s: string) => s.trim());
       if (parts.length >= 11) {
         parsedRows.push({
           cropName: parts[0],
