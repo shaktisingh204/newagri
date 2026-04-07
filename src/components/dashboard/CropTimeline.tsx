@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toggleFavorite } from "@/actions/favorites";
+import { getCropAIInfo } from "@/actions/ai";
 import toast from "react-hot-toast";
 import Link from "next/link";
 
@@ -36,6 +37,11 @@ interface CalendarEntry {
   phases: Phase[];
 }
 
+function getCropDuration(phases: Phase[]): string {
+  const active = phases.filter((p) => p.phase !== "idle").length;
+  return `${active} month${active !== 1 ? "s" : ""}`;
+}
+
 export default function CropTimeline({
   calendars,
   favoriteIds,
@@ -44,6 +50,32 @@ export default function CropTimeline({
   favoriteIds: string[];
 }) {
   const [favSet, setFavSet] = useState<Set<string>>(new Set(favoriteIds));
+  const [aiInfo, setAiInfo] = useState<Record<string, string>>({});
+  const [aiLoading, setAiLoading] = useState<string | null>(null);
+
+  async function handleAIInfo(cal: CalendarEntry) {
+    if (aiInfo[cal._id]) {
+      setAiInfo((prev) => {
+        const next = { ...prev };
+        delete next[cal._id];
+        return next;
+      });
+      return;
+    }
+    setAiLoading(cal._id);
+    try {
+      const result = await getCropAIInfo(cal.cropName, cal.country, cal.state, cal.season);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        setAiInfo((prev) => ({ ...prev, [cal._id]: result.info! }));
+      }
+    } catch {
+      toast.error("Failed to get AI info");
+    } finally {
+      setAiLoading(null);
+    }
+  }
 
   async function handleToggleFav(id: string) {
     try {
@@ -99,6 +131,17 @@ export default function CropTimeline({
                 <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs font-medium">
                   {cal.season}
                 </span>
+                <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs font-medium">
+                  {getCropDuration(cal.phases || [])}
+                </span>
+                <button
+                  onClick={() => handleAIInfo(cal)}
+                  disabled={aiLoading === cal._id}
+                  className="bg-purple-100 text-purple-700 hover:bg-purple-200 px-2 py-0.5 rounded-full text-xs font-medium transition-colors disabled:opacity-50"
+                  title="Get AI insights"
+                >
+                  {aiLoading === cal._id ? "Loading..." : aiInfo[cal._id] ? "Hide AI" : "AI Info"}
+                </button>
                 <button
                   onClick={() => handleToggleFav(cal._id)}
                   className={`text-sm px-2 py-1 rounded transition-colors ${
@@ -134,6 +177,12 @@ export default function CropTimeline({
               })}
             </div>
           </div>
+          {aiInfo[cal._id] && (
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-t bg-purple-50">
+              <p className="text-xs font-semibold text-purple-700 mb-2">AI Insights</p>
+              <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{aiInfo[cal._id]}</p>
+            </div>
+          )}
         </div>
       ))}
     </div>

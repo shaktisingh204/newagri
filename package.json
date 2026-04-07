@@ -10,6 +10,7 @@
     "seed": "npx tsx scripts/seed.ts"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^3.0.3",
     "cookies-next": "^6.1.1",
     "jose": "^6.2.2",

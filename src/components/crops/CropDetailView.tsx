@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toggleFavorite } from "@/actions/favorites";
+import { getCropAIInfo } from "@/actions/ai";
 import toast from "react-hot-toast";
 import Link from "next/link";
 
@@ -42,6 +43,30 @@ export default function CropDetailView({
 }) {
   const [favorited, setFavorited] = useState(initialFavorited);
   const [copying, setCopying] = useState(false);
+  const [aiInfo, setAiInfo] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const totalDuration = calendar.phases?.filter((p) => p.phase !== "idle").length || 0;
+
+  async function handleAIInfo() {
+    if (aiInfo) {
+      setAiInfo(null);
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const result = await getCropAIInfo(calendar.cropName, calendar.country, calendar.state, calendar.season);
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        setAiInfo(result.info!);
+      }
+    } catch {
+      toast.error("Failed to get AI info");
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   async function handleFavorite() {
     try {
@@ -87,11 +112,23 @@ export default function CropDetailView({
               {calendar.country} / {calendar.state}
               {calendar.region ? ` / ${calendar.region}` : ""}
             </p>
-            <span className="inline-block mt-2 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-              {calendar.season}
-            </span>
+            <div className="flex flex-wrap gap-2 mt-2">
+              <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                {calendar.season}
+              </span>
+              <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                Duration: {totalDuration} month{totalDuration !== 1 ? "s" : ""}
+              </span>
+            </div>
           </div>
           <div className="flex gap-2">
+            <button
+              onClick={handleAIInfo}
+              disabled={aiLoading}
+              className="bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              {aiLoading ? "Loading..." : aiInfo ? "Hide AI" : "AI Info"}
+            </button>
             <button
               onClick={handleFavorite}
               className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -111,6 +148,14 @@ export default function CropDetailView({
           </div>
         </div>
       </div>
+
+      {/* AI Info */}
+      {aiInfo && (
+        <div className="bg-purple-50 rounded-xl shadow-sm border border-purple-200 p-4 sm:p-6">
+          <h2 className="text-lg font-semibold text-purple-700 mb-3">AI Insights</h2>
+          <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{aiInfo}</p>
+        </div>
+      )}
 
       {/* Timeline */}
       <div className="bg-white rounded-xl shadow-sm border p-4 sm:p-6">
@@ -149,7 +194,8 @@ export default function CropDetailView({
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
+        <StatCard label="Total Duration" value={`${totalDuration} months`} />
         <StatCard label="Active Months" value={`${totalActiveMonths} / 12`} />
         <StatCard label="Sowing" value={`${calendar.sowingMonths.length} months`} />
         <StatCard label="Growing" value={`${calendar.growingMonths.length} months`} />
