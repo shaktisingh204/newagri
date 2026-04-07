@@ -2,6 +2,7 @@
 
 import { connectDB } from "@/lib/db";
 import { CropCalendar } from "@/models/CropCalendar";
+import { Region } from "@/models/Region";
 import { UsageEvent } from "@/models/UsageEvent";
 import { getCurrentUser } from "@/lib/auth";
 
@@ -99,13 +100,16 @@ export async function getCropCalendarById(id: string) {
 export async function getRegionsWithCoordinates() {
   await connectDB();
 
-  // Get unique country/state combinations from CropCalendar for map display
-  const regions = await CropCalendar.aggregate([
-    { $group: { _id: { country: "$country", state: "$state" }, count: { $sum: 1 } } },
-    { $project: { country: "$_id.country", state: "$_id.state", count: 1, _id: 0 } },
-  ]);
+  const regions = await Region.find({}, {
+    country: 1,
+    state: 1,
+    region: 1,
+    latitude: 1,
+    longitude: 1,
+    agroEcologicalZone: 1,
+  }).lean();
 
-  return regions;
+  return JSON.parse(JSON.stringify(regions));
 }
 
 export async function getInSeasonCrops(month: number) {

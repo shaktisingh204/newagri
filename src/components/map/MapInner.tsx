@@ -26,9 +26,13 @@ interface RegionData {
 }
 
 export default function MapInner({ regions }: { regions: RegionData[] }) {
+  const validRegions = regions.filter(
+    (r) => typeof r.latitude === "number" && typeof r.longitude === "number"
+  );
+
   const center: [number, number] =
-    regions.length > 0
-      ? [regions[0].latitude, regions[0].longitude]
+    validRegions.length > 0
+      ? [validRegions[0].latitude, validRegions[0].longitude]
       : [20, 0];
 
   return (
@@ -38,7 +42,7 @@ export default function MapInner({ regions }: { regions: RegionData[] }) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {regions.map((r) => (
+        {validRegions.map((r) => (
           <Marker key={r._id} position={[r.latitude, r.longitude]} icon={defaultIcon}>
             <Popup>
               <div className="text-sm">
