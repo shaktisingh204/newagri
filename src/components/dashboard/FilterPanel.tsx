@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { getStatesForCountry } from "@/actions/crops";
+import { getStatesForCountry, getDistrictsForState } from "@/actions/crops";
 
 interface FilterPanelProps {
   countries: string[];
@@ -17,9 +17,11 @@ export default function FilterPanel({ countries, crops, seasons, months }: Filte
   const [isPending, startTransition] = useTransition();
 
   const [states, setStates] = useState<string[]>([]);
+  const [districts, setDistricts] = useState<string[]>([]);
 
   const currentCountry = searchParams.get("country") || "India";
   const currentState = searchParams.get("state") || "";
+  const currentDistrict = searchParams.get("district") || "";
   const currentCrop = searchParams.get("crop") || "";
   const currentSeason = searchParams.get("season") || "";
   const currentMonth = searchParams.get("month") || "";
@@ -31,6 +33,14 @@ export default function FilterPanel({ countries, crops, seasons, months }: Filte
       setStates([]);
     }
   }, [currentCountry]);
+
+  useEffect(() => {
+    if (currentCountry && currentState) {
+      getDistrictsForState(currentCountry, currentState).then(setDistricts);
+    } else {
+      setDistricts([]);
+    }
+  }, [currentCountry, currentState]);
 
 
   const updateFilter = useCallback(
@@ -44,7 +54,10 @@ export default function FilterPanel({ countries, crops, seasons, months }: Filte
       // Clear dependent filters
       if (key === "country") {
         params.delete("state");
-        params.delete("region");
+        params.delete("district");
+      }
+      if (key === "state") {
+        params.delete("district");
       }
       startTransition(() => {
         router.push(`/dashboard?${params.toString()}`);
@@ -68,9 +81,10 @@ export default function FilterPanel({ countries, crops, seasons, months }: Filte
           Clear All
         </button>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <SelectFilter label="Country" value={currentCountry} options={countries} onChange={(v) => updateFilter("country", v)} />
         <SelectFilter label="State" value={currentState} options={states} onChange={(v) => updateFilter("state", v)} disabled={!currentCountry} />
+        <SelectFilter label="District" value={currentDistrict} options={districts} onChange={(v) => updateFilter("district", v)} disabled={!currentState} />
         <SelectFilter label="Crop" value={currentCrop} options={crops} onChange={(v) => updateFilter("crop", v)} />
         <SelectFilter label="Season" value={currentSeason} options={seasons} onChange={(v) => updateFilter("season", v)} />
         <SelectFilter label="Month" value={currentMonth} options={months} onChange={(v) => updateFilter("month", v)} />

@@ -10,6 +10,7 @@ export interface CalendarFilters {
   country?: string;
   state?: string;
   region?: string;
+  district?: string;
   crop?: string;
   season?: string;
   month?: string;
@@ -47,6 +48,12 @@ export async function getRegionsForState(country: string, state: string) {
   return regions.filter(Boolean).sort();
 }
 
+export async function getDistrictsForState(country: string, state: string) {
+  await connectDB();
+  const districts = await CropCalendar.distinct("region", { country, state });
+  return districts.filter(Boolean).sort();
+}
+
 export async function searchCropCalendars(filters: CalendarFilters) {
   await connectDB();
   const user = await getCurrentUser();
@@ -56,7 +63,8 @@ export async function searchCropCalendars(filters: CalendarFilters) {
 
   if (filters.country) query.country = filters.country;
   if (filters.state) query.state = filters.state;
-  if (filters.region) query.region = filters.region;
+  if (filters.district) query.region = filters.district;
+  else if (filters.region) query.region = filters.region;
   if (filters.crop) query.cropName = filters.crop;
   if (filters.season) query.season = filters.season;
   if (filters.month) {

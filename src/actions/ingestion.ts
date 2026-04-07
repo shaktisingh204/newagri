@@ -3,6 +3,7 @@
 import { connectDB } from "@/lib/db";
 import { Upload } from "@/models/Upload";
 import { Crop } from "@/models/Crop";
+import { Region } from "@/models/Region";
 import { CropCalendar } from "@/models/CropCalendar";
 import { requireAdmin } from "@/lib/auth";
 import * as XLSX from "xlsx";
@@ -12,6 +13,7 @@ interface ParsedRow {
   cropName: string;
   country: string;
   state: string;
+  district: string;
   season: string;
   sowingMonths: number[];
   growingMonths: number[];
@@ -99,10 +101,22 @@ function validateRow(row: ParsedRow, index: number): { valid: boolean; reason?: 
 
 // ── Normalization — handles both your XLSX columns and generic column names ──
 
+function normalizeState(raw: string): string {
+  const map: Record<string, string> = {
+    "HP": "Himachal Pradesh",
+    "UP": "Uttar Pradesh",
+    "Rajashthan": "Rajasthan",
+    "Orissa": "Odisha",
+  };
+  return map[raw] || raw;
+}
+
 function normalizeRow(raw: Record<string, string>): ParsedRow {
   const cropName = (raw["Crop"] || raw["crop"] || raw["crop_name"] || raw["cropName"] || "").trim();
   const country = (raw["Country"] || raw["country"] || "India").trim();
-  const state = (raw["State"] || raw["state"] || raw["province"] || "").trim();
+  const stateRaw = (raw["State"] || raw["state"] || raw["province"] || "").trim();
+  const state = normalizeState(stateRaw);
+  const district = (raw["Name of the district (All districts)"] || raw["District"] || raw["district"] || "").trim();
   const seasonRaw = (raw["Season"] || raw["season"] || "").trim();
 
   // Your XLSX uses "Sowing Period" and "Harvesting period" with text dates
@@ -151,6 +165,7 @@ function normalizeRow(raw: Record<string, string>): ParsedRow {
     cropName,
     country,
     state,
+    district,
     season: normalizeSeason(seasonRaw),
     sowingMonths,
     growingMonths,
@@ -203,10 +218,11 @@ export async function uploadAndParseFile(formData: FormData) {
           cropName: parts[0],
           country: parts[1],
           state: parts[2],
-          season: parts[3],
-          sowingMonths: parseMonthList(parts[4]),
-          growingMonths: parseMonthList(parts[5]),
-          harvestingMonths: parseMonthList(parts[6]),
+          district: parts.length >= 8 ? parts[3] : "",
+          season: parts.length >= 8 ? parts[4] : parts[3],
+          sowingMonths: parseMonthList(parts.length >= 8 ? parts[5] : parts[4]),
+          growingMonths: parseMonthList(parts.length >= 8 ? parts[6] : parts[5]),
+          harvestingMonths: parseMonthList(parts.length >= 8 ? parts[7] : parts[6]),
         });
       }
     }
@@ -285,6 +301,13 @@ export async function commitUpload(uploadId: string) {
       { upsert: true, returnDocument: "after" }
     );
 
+    // Create or find region record for the district
+    const region = await Region.findOneAndUpdate(
+      { country: row.country, state: row.state, region: row.district, tenantId: user.tenantId },
+      { country: row.country, state: row.state, region: row.district, agroEcologicalZone: "", latitude: 20.59, longitude: 78.96, tenantId: user.tenantId },
+      { upsert: true, returnDocument: "after" }
+    );
+
     const phases = [];
     for (let m = 1; m <= 12; m++) {
       if (row.sowingMonths.includes(m)) phases.push({ month: m, phase: "sowing" as const });
@@ -298,15 +321,17 @@ export async function commitUpload(uploadId: string) {
         cropId: crop._id,
         country: row.country,
         state: row.state,
+        region: row.district,
         season: row.season,
         tenantId: user.tenantId,
       },
       {
         cropId: crop._id,
+        regionId: region._id,
         cropName: row.cropName,
         country: row.country,
         state: row.state,
-        region: "",
+        region: row.district,
         season: row.season,
         phases,
         sowingMonths: row.sowingMonths,
@@ -325,6 +350,20 @@ export async function commitUpload(uploadId: string) {
   await upload.save();
 
   return { success: true, committed };
+}
+
+export async function clearAllData() {
+  const user = await requireAdmin();
+  await connectDB();
+
+  await Promise.all([
+    Crop.deleteMany({ tenantId: user.tenantId }),
+    Region.deleteMany({ tenantId: user.tenantId }),
+    CropCalendar.deleteMany({ tenantId: user.tenantId }),
+    Upload.deleteMany({ tenantId: user.tenantId }),
+  ]);
+
+  return { success: true };
 }
 
 export async function deleteUpload(uploadId: string) {

@@ -15,6 +15,7 @@ interface DashboardPageProps {
     country?: string;
     state?: string;
     region?: string;
+    district?: string;
     crop?: string;
     season?: string;
     month?: string;
