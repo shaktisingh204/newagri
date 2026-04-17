@@ -17,6 +17,17 @@ export interface ICropCalendar extends Document {
   sowingMonths: number[];
   growingMonths: number[];
   harvestingMonths: number[];
+  durationDays?: number;
+  soilType?: string;
+  waterRequirement?: "low" | "medium" | "high";
+  temperatureRange?: { min?: number; max?: number };
+  rainfallRequirement?: string;
+  fertilizerRecommendation?: string;
+  pests?: string[];
+  yieldInfo?: string;
+  profitEstimate?: string;
+  cropImage?: string;
+  description?: string;
   tenantId: string;
   createdAt: Date;
 }
@@ -39,6 +50,20 @@ const CropCalendarSchema = new Schema<ICropCalendar>(
     sowingMonths: [{ type: Number }],
     growingMonths: [{ type: Number }],
     harvestingMonths: [{ type: Number }],
+    durationDays: { type: Number },
+    soilType: { type: String },
+    waterRequirement: { type: String, enum: ["low", "medium", "high"] },
+    temperatureRange: {
+      min: { type: Number },
+      max: { type: Number },
+    },
+    rainfallRequirement: { type: String },
+    fertilizerRecommendation: { type: String },
+    pests: [{ type: String }],
+    yieldInfo: { type: String },
+    profitEstimate: { type: String },
+    cropImage: { type: String },
+    description: { type: String },
     tenantId: { type: String, required: true, index: true },
   },
   { timestamps: true }

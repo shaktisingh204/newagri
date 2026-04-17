@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import Navbar from "@/components/Navbar";
 import FilterPanel from "@/components/dashboard/FilterPanel";
+import BestCropBadge from "@/components/dashboard/BestCropBadge";
+import WeatherWidget from "@/components/dashboard/WeatherWidget";
 import CropTimeline from "@/components/dashboard/CropTimeline";
 import StatsBar from "@/components/dashboard/StatsBar";
 import CropMap from "@/components/map/CropMap";
@@ -19,6 +21,9 @@ interface DashboardPageProps {
     crop?: string;
     season?: string;
     month?: string;
+    sort?: string;
+    soilType?: string;
+    waterRequirement?: string;
   }>;
 }
 
@@ -56,8 +61,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             crops={filterOptions.crops}
             seasons={filterOptions.seasons}
             months={filterOptions.months}
+            soilTypes={filterOptions.soilTypes}
+            waterRequirements={filterOptions.waterRequirements}
           />
         </Suspense>
+
+        <BestCropBadge />
+
+        <WeatherWidget />
 
         <div className="grid lg:grid-cols-5 gap-6">
           <div className="lg:col-span-3">

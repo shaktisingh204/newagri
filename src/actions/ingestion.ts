@@ -18,6 +18,59 @@ interface ParsedRow {
   sowingMonths: number[];
   growingMonths: number[];
   harvestingMonths: number[];
+  durationDays?: number;
+  soilType?: string;
+  waterRequirement?: "low" | "medium" | "high";
+  temperatureRange?: { min?: number; max?: number };
+  rainfallRequirement?: string;
+  fertilizerRecommendation?: string;
+  pests?: string[];
+  yieldInfo?: string;
+  profitEstimate?: string;
+  cropImage?: string;
+  description?: string;
+}
+
+// Normalize a column name: lowercase, strip spaces/underscores/dashes
+function normalizeKey(key: string): string {
+  return key.toLowerCase().replace(/[\s_\-]+/g, "");
+}
+
+// Look up a value from `raw` by trying each candidate column name,
+// matching case-insensitively and ignoring spaces/underscores/dashes.
+function getCell(raw: Record<string, string>, candidates: string[]): string {
+  const normalizedCandidates = candidates.map(normalizeKey);
+  for (const key of Object.keys(raw)) {
+    if (normalizedCandidates.includes(normalizeKey(key))) {
+      const val = raw[key];
+      if (val === undefined || val === null) continue;
+      const str = String(val).trim();
+      if (str !== "") return str;
+    }
+  }
+  return "";
+}
+
+function parseOptionalNumber(val: string): number | undefined {
+  if (!val) return undefined;
+  const n = Number(val);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function parseWaterRequirement(val: string): "low" | "medium" | "high" | undefined {
+  if (!val) return undefined;
+  const v = val.toLowerCase().trim();
+  if (v === "low" || v === "medium" || v === "high") return v;
+  return undefined;
+}
+
+function parsePestsList(val: string): string[] | undefined {
+  if (!val) return undefined;
+  const list = val
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  return list.length > 0 ? list : undefined;
 }
 
 // ── Month parsing from text like "15th June - 15th Aug" ──
@@ -161,6 +214,24 @@ function normalizeRow(raw: Record<string, string>): ParsedRow {
     }
   }
 
+  // Optional enrichment columns — case/space/underscore-insensitive
+  const durationDays = parseOptionalNumber(getCell(raw, ["Duration Days"]));
+  const soilType = getCell(raw, ["Soil Type"]) || undefined;
+  const waterRequirement = parseWaterRequirement(getCell(raw, ["Water Requirement"]));
+  const tempMin = parseOptionalNumber(getCell(raw, ["Temperature Min"]));
+  const tempMax = parseOptionalNumber(getCell(raw, ["Temperature Max"]));
+  const temperatureRange =
+    tempMin !== undefined || tempMax !== undefined
+      ? { ...(tempMin !== undefined ? { min: tempMin } : {}), ...(tempMax !== undefined ? { max: tempMax } : {}) }
+      : undefined;
+  const rainfallRequirement = getCell(raw, ["Rainfall"]) || undefined;
+  const fertilizerRecommendation = getCell(raw, ["Fertilizer"]) || undefined;
+  const pests = parsePestsList(getCell(raw, ["Pests"]));
+  const yieldInfo = getCell(raw, ["Yield"]) || undefined;
+  const profitEstimate = getCell(raw, ["Profit"]) || undefined;
+  const cropImage = getCell(raw, ["Image"]) || undefined;
+  const description = getCell(raw, ["Description"]) || undefined;
+
   return {
     cropName,
     country,
@@ -170,6 +241,17 @@ function normalizeRow(raw: Record<string, string>): ParsedRow {
     sowingMonths,
     growingMonths,
     harvestingMonths,
+    ...(durationDays !== undefined ? { durationDays } : {}),
+    ...(soilType ? { soilType } : {}),
+    ...(waterRequirement ? { waterRequirement } : {}),
+    ...(temperatureRange ? { temperatureRange } : {}),
+    ...(rainfallRequirement ? { rainfallRequirement } : {}),
+    ...(fertilizerRecommendation ? { fertilizerRecommendation } : {}),
+    ...(pests ? { pests } : {}),
+    ...(yieldInfo ? { yieldInfo } : {}),
+    ...(profitEstimate ? { profitEstimate } : {}),
+    ...(cropImage ? { cropImage } : {}),
+    ...(description ? { description } : {}),
   };
 }
 
@@ -316,6 +398,33 @@ export async function commitUpload(uploadId: string) {
       else phases.push({ month: m, phase: "idle" as const });
     }
 
+    const calendarUpdate: Partial<Omit<ParsedRow, "cropName" | "country" | "state" | "district" | "season" | "sowingMonths" | "growingMonths" | "harvestingMonths">> & Record<string, unknown> = {
+      cropId: crop._id,
+      regionId: region._id,
+      cropName: row.cropName,
+      country: row.country,
+      state: row.state,
+      region: row.district,
+      season: row.season,
+      phases,
+      sowingMonths: row.sowingMonths,
+      growingMonths: row.growingMonths,
+      harvestingMonths: row.harvestingMonths,
+      tenantId: user.tenantId,
+    };
+
+    if (row.durationDays !== undefined) calendarUpdate.durationDays = row.durationDays;
+    if (row.soilType) calendarUpdate.soilType = row.soilType;
+    if (row.waterRequirement) calendarUpdate.waterRequirement = row.waterRequirement;
+    if (row.temperatureRange) calendarUpdate.temperatureRange = row.temperatureRange;
+    if (row.rainfallRequirement) calendarUpdate.rainfallRequirement = row.rainfallRequirement;
+    if (row.fertilizerRecommendation) calendarUpdate.fertilizerRecommendation = row.fertilizerRecommendation;
+    if (row.pests && row.pests.length > 0) calendarUpdate.pests = row.pests;
+    if (row.yieldInfo) calendarUpdate.yieldInfo = row.yieldInfo;
+    if (row.profitEstimate) calendarUpdate.profitEstimate = row.profitEstimate;
+    if (row.cropImage) calendarUpdate.cropImage = row.cropImage;
+    if (row.description) calendarUpdate.description = row.description;
+
     await CropCalendar.findOneAndUpdate(
       {
         cropId: crop._id,
@@ -325,20 +434,7 @@ export async function commitUpload(uploadId: string) {
         season: row.season,
         tenantId: user.tenantId,
       },
-      {
-        cropId: crop._id,
-        regionId: region._id,
-        cropName: row.cropName,
-        country: row.country,
-        state: row.state,
-        region: row.district,
-        season: row.season,
-        phases,
-        sowingMonths: row.sowingMonths,
-        growingMonths: row.growingMonths,
-        harvestingMonths: row.harvestingMonths,
-        tenantId: user.tenantId,
-      },
+      calendarUpdate,
       { upsert: true, returnDocument: "after" }
     );
 

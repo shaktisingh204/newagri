@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import FileUploader from "@/components/admin/FileUploader";
 import UploadPreview from "@/components/admin/UploadPreview";
 import UploadHistory from "@/components/admin/UploadHistory";
+import DownloadTemplateButton from "@/components/admin/DownloadTemplateButton";
 import { clearAllData } from "@/actions/ingestion";
 import toast from "react-hot-toast";
 
@@ -36,13 +38,22 @@ export default function AdminPage() {
             Upload, parse, validate, and commit crop calendar data
           </p>
         </div>
-        <button
-          onClick={handleClearDB}
-          disabled={clearing}
-          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 self-start"
-        >
-          {clearing ? "Clearing..." : "Clear All Data"}
-        </button>
+        <div className="flex items-center gap-3 self-start">
+          <DownloadTemplateButton />
+          <Link
+            href="/admin/crops"
+            className="bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            Manage Crop Records
+          </Link>
+          <button
+            onClick={handleClearDB}
+            disabled={clearing}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {clearing ? "Clearing..." : "Clear All Data"}
+          </button>
+        </div>
       </div>
 
       <FileUploader onUploadComplete={setSelectedUploadId} />

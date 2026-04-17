@@ -4,11 +4,26 @@ import { useState, useTransition } from "react";
 import { getCropComparisonData } from "@/actions/crops";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTH_FULL = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
 const CROP_COLORS = [
   { sowing: "bg-amber-400", growing: "bg-green-500", harvesting: "bg-orange-500" },
   { sowing: "bg-blue-400", growing: "bg-teal-500", harvesting: "bg-purple-500" },
   { sowing: "bg-pink-400", growing: "bg-cyan-500", harvesting: "bg-red-500" },
+  { sowing: "bg-lime-400", growing: "bg-indigo-500", harvesting: "bg-rose-500" },
 ];
 
 interface Phase {
@@ -24,7 +39,21 @@ interface CalendarEntry {
   region: string;
   season: string;
   phases: Phase[];
+  durationDays?: number;
+  sowingMonths?: number[];
+  harvestingMonths?: number[];
+  waterRequirement?: string;
+  soilType?: string;
+  yieldInfo?: string;
 }
+
+const formatMonthList = (months?: number[]): string => {
+  if (!months || months.length === 0) return "—";
+  const names = months
+    .filter((m) => m >= 1 && m <= 12)
+    .map((m) => MONTH_FULL[m - 1]);
+  return names.length > 0 ? names.join(", ") : "—";
+};
 
 export default function ComparisonView({ availableCrops }: { availableCrops: string[] }) {
   const [selected, setSelected] = useState<string[]>([""]);
@@ -32,7 +61,7 @@ export default function ComparisonView({ availableCrops }: { availableCrops: str
   const [isPending, startTransition] = useTransition();
 
   const addCrop = () => {
-    if (selected.length < 3) setSelected([...selected, ""]);
+    if (selected.length < 4) setSelected([...selected, ""]);
   };
 
   const removeCrop = (index: number) => {
@@ -60,11 +89,20 @@ export default function ComparisonView({ availableCrops }: { availableCrops: str
     entries: results.filter((r) => r.cropName === cropName),
   }));
 
+  // Summary rows — one per crop, using the first entry for the structured table
+  const summaryRows = groupedByCrop
+    .map((group, cropIdx) => {
+      const primary = group.entries[0];
+      if (!primary) return null;
+      return { cropIdx, cropName: group.cropName, entry: primary };
+    })
+    .filter((row): row is { cropIdx: number; cropName: string; entry: CalendarEntry } => row !== null);
+
   return (
     <div className="space-y-6">
       {/* Crop selector */}
       <div className="bg-white rounded-xl shadow-sm border p-4 sm:p-6">
-        <h2 className="text-lg font-semibold mb-4">Select Crops to Compare (max 3)</h2>
+        <h2 className="text-lg font-semibold mb-4">Select Crops to Compare (max 4)</h2>
         <div className="space-y-3">
           {selected.map((crop, idx) => (
             <div key={idx} className="flex items-center gap-3">
@@ -95,7 +133,7 @@ export default function ComparisonView({ availableCrops }: { availableCrops: str
           ))}
         </div>
         <div className="flex flex-wrap gap-3 mt-4">
-          {selected.length < 3 && (
+          {selected.length < 4 && (
             <button
               onClick={addCrop}
               className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors"
@@ -112,6 +150,56 @@ export default function ComparisonView({ availableCrops }: { availableCrops: str
           </button>
         </div>
       </div>
+
+      {/* Structured comparison table */}
+      {summaryRows.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+          <div className="px-4 sm:px-6 py-4 border-b bg-gray-50">
+            <h3 className="font-semibold text-lg">Crop Comparison</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px] text-sm">
+              <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                  <th scope="col" className="px-4 py-3 font-medium">Crop Name</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Season</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Duration (Days)</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Sowing Months</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Harvesting Months</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Water Need</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Soil Type</th>
+                  <th scope="col" className="px-4 py-3 font-medium">Yield</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {summaryRows.map(({ cropIdx, cropName, entry }) => (
+                  <tr key={cropName} className="align-top">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-block w-3 h-3 rounded-full shrink-0 ${
+                            CROP_COLORS[cropIdx]?.growing || "bg-gray-400"
+                          }`}
+                        />
+                        <span className="font-medium text-gray-800">{cropName}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-gray-700">{entry.season || "—"}</td>
+                    <td className="px-4 py-3 text-gray-700">
+                      {typeof entry.durationDays === "number" ? entry.durationDays : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-gray-700">{formatMonthList(entry.sowingMonths)}</td>
+                    <td className="px-4 py-3 text-gray-700">{formatMonthList(entry.harvestingMonths)}</td>
+                    <td className="px-4 py-3 text-gray-700">{entry.waterRequirement || "—"}</td>
+                    <td className="px-4 py-3 text-gray-700">{entry.soilType || "—"}</td>
+                    <td className="px-4 py-3 text-gray-700">{entry.yieldInfo || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Comparison results */}
       {groupedByCrop.length > 0 && groupedByCrop[0].entries.length > 0 && (

@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { toggleFavorite } from "@/actions/favorites";
 import { getCropAIInfo } from "@/actions/ai";
 import toast from "react-hot-toast";
 import Link from "next/link";
+import CropReportButton from "@/components/crops/CropReportButton";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const FULL_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -32,6 +34,79 @@ interface Calendar {
   sowingMonths: number[];
   growingMonths: number[];
   harvestingMonths: number[];
+  durationDays?: number;
+  soilType?: string;
+  waterRequirement?: "low" | "medium" | "high";
+  temperatureRange?: { min?: number; max?: number };
+  rainfallRequirement?: string;
+  fertilizerRecommendation?: string;
+  pests?: string[];
+  yieldInfo?: string;
+  profitEstimate?: string;
+  cropImage?: string;
+  description?: string;
+}
+
+function capitalize(value: string): string {
+  if (!value) return value;
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function formatTemperatureRange(range: { min?: number; max?: number } | undefined): string {
+  if (!range) return "";
+  const hasMin = typeof range.min === "number";
+  const hasMax = typeof range.max === "number";
+  if (hasMin && hasMax) return `${range.min}\u00B0C \u2013 ${range.max}\u00B0C`;
+  if (hasMin) return `Min: ${range.min}\u00B0C`;
+  if (hasMax) return `Max: ${range.max}\u00B0C`;
+  return "";
+}
+
+interface CultivationField {
+  label: string;
+  value: string;
+}
+
+function buildCultivationFields(calendar: Calendar): CultivationField[] {
+  const fields: CultivationField[] = [];
+
+  if (calendar.soilType && calendar.soilType.trim() !== "") {
+    fields.push({ label: "Soil Type", value: calendar.soilType });
+  }
+
+  if (calendar.waterRequirement) {
+    fields.push({ label: "Water Requirement", value: capitalize(calendar.waterRequirement) });
+  }
+
+  const tempValue = formatTemperatureRange(calendar.temperatureRange);
+  if (tempValue) {
+    fields.push({ label: "Temperature Range", value: tempValue });
+  }
+
+  if (calendar.rainfallRequirement && calendar.rainfallRequirement.trim() !== "") {
+    fields.push({ label: "Rainfall", value: calendar.rainfallRequirement });
+  }
+
+  if (calendar.fertilizerRecommendation && calendar.fertilizerRecommendation.trim() !== "") {
+    fields.push({ label: "Fertilizer", value: calendar.fertilizerRecommendation });
+  }
+
+  if (calendar.yieldInfo && calendar.yieldInfo.trim() !== "") {
+    fields.push({ label: "Expected Yield", value: calendar.yieldInfo });
+  }
+
+  if (calendar.profitEstimate && calendar.profitEstimate.trim() !== "") {
+    fields.push({ label: "Profit Estimate", value: calendar.profitEstimate });
+  }
+
+  if (calendar.pests && calendar.pests.length > 0) {
+    const joined = calendar.pests.filter((p) => p && p.trim() !== "").join(", ");
+    if (joined) {
+      fields.push({ label: "Common Pests & Diseases", value: joined });
+    }
+  }
+
+  return fields;
 }
 
 export default function CropDetailView({
@@ -47,6 +122,14 @@ export default function CropDetailView({
   const [aiLoading, setAiLoading] = useState(false);
 
   const totalDuration = calendar.phases?.filter((p) => p.phase !== "idle").length || 0;
+  const hasDurationDays = typeof calendar.durationDays === "number";
+  const durationLabel = hasDurationDays
+    ? `Duration: ${calendar.durationDays} days`
+    : `Duration: ${totalDuration} month${totalDuration !== 1 ? "s" : ""}`;
+
+  const cultivationFields = buildCultivationFields(calendar);
+  const hasCropImage = typeof calendar.cropImage === "string" && calendar.cropImage.trim() !== "";
+  const hasDescription = typeof calendar.description === "string" && calendar.description.trim() !== "";
 
   async function handleAIInfo() {
     if (aiInfo) {
@@ -95,6 +178,7 @@ export default function CropDetailView({
   const harvestingMonthNames = calendar.harvestingMonths.map((m) => FULL_MONTHS[m - 1]);
 
   const totalActiveMonths = calendar.sowingMonths.length + calendar.growingMonths.length + calendar.harvestingMonths.length;
+  const totalDurationValue = hasDurationDays ? `${calendar.durationDays} days` : `${totalDuration} months`;
 
   return (
     <div className="space-y-6">
@@ -106,19 +190,31 @@ export default function CropDetailView({
       {/* Header */}
       <div className="bg-white rounded-xl shadow-sm border p-4 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{calendar.cropName}</h1>
-            <p className="text-gray-500 mt-1 text-sm sm:text-base">
-              {calendar.country} / {calendar.state}
-              {calendar.region ? ` / ${calendar.region}` : ""}
-            </p>
-            <div className="flex flex-wrap gap-2 mt-2">
-              <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                {calendar.season}
-              </span>
-              <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                Duration: {totalDuration} month{totalDuration !== 1 ? "s" : ""}
-              </span>
+          <div className="flex flex-col sm:flex-row gap-4 sm:items-start">
+            {hasCropImage && (
+              <Image
+                src={calendar.cropImage as string}
+                alt={calendar.cropName}
+                width={320}
+                height={200}
+                unoptimized
+                className="rounded-xl object-cover"
+              />
+            )}
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{calendar.cropName}</h1>
+              <p className="text-gray-500 mt-1 text-sm sm:text-base">
+                {calendar.country} / {calendar.state}
+                {calendar.region ? ` / ${calendar.region}` : ""}
+              </p>
+              <div className="flex flex-wrap gap-2 mt-2">
+                <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                  {calendar.season}
+                </span>
+                <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                  {durationLabel}
+                </span>
+              </div>
             </div>
           </div>
           <div className="flex gap-2">
@@ -129,6 +225,7 @@ export default function CropDetailView({
             >
               {aiLoading ? "Loading..." : aiInfo ? "Hide AI" : "AI Info"}
             </button>
+            <CropReportButton calendar={calendar} />
             <button
               onClick={handleFavorite}
               className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -154,6 +251,14 @@ export default function CropDetailView({
         <div className="bg-purple-50 rounded-xl shadow-sm border border-purple-200 p-4 sm:p-6">
           <h2 className="text-lg font-semibold text-purple-700 mb-3">AI Insights</h2>
           <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{aiInfo}</p>
+        </div>
+      )}
+
+      {/* About this crop */}
+      {hasDescription && (
+        <div className="bg-white rounded-xl shadow-sm border p-4 sm:p-6">
+          <h2 className="text-lg font-semibold text-gray-800 mb-3">About this crop</h2>
+          <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{calendar.description}</p>
         </div>
       )}
 
@@ -195,7 +300,7 @@ export default function CropDetailView({
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
-        <StatCard label="Total Duration" value={`${totalDuration} months`} />
+        <StatCard label="Total Duration" value={totalDurationValue} />
         <StatCard label="Active Months" value={`${totalActiveMonths} / 12`} />
         <StatCard label="Sowing" value={`${calendar.sowingMonths.length} months`} />
         <StatCard label="Growing" value={`${calendar.growingMonths.length} months`} />
@@ -208,6 +313,18 @@ export default function CropDetailView({
         <PhaseCard title="Growing Period" months={growingMonthNames} color="green" />
         <PhaseCard title="Harvesting Period" months={harvestingMonthNames} color="orange" />
       </div>
+
+      {/* Cultivation Details */}
+      {cultivationFields.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border p-4 sm:p-6">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">Cultivation Details</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {cultivationFields.map((field) => (
+              <InfoRow key={field.label} label={field.label} value={field.value} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -240,6 +357,15 @@ function PhaseCard({ title, months, color }: { title: string; months: string[]; 
       ) : (
         <p className="text-sm text-gray-400">No data</p>
       )}
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string; icon?: never }) {
+  return (
+    <div className="flex flex-col gap-1 p-3 bg-gray-50 rounded-lg">
+      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</span>
+      <span className="text-sm text-gray-800">{value}</span>
     </div>
   );
 }
