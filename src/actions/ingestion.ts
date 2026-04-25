@@ -168,33 +168,35 @@ function normalizeRow(raw: Record<string, string>): ParsedRow {
   const country = (raw["Country"] || raw["country"] || "India").trim();
   const stateRaw = (raw["State"] || raw["state"] || raw["province"] || "").trim();
   const state = normalizeState(stateRaw);
-  const district = (raw["Name of the district (All districts)"] || raw["District"] || raw["district"] || "").trim();
+  const district = (raw["Name of the district (All districts)"] || raw["District"] || raw["district"] || raw["Region"] || raw["region"] || "").trim();
   const seasonRaw = (raw["Season"] || raw["season"] || "").trim();
 
   // Your XLSX uses "Sowing Period" and "Harvesting period" with text dates
   const sowingPeriod = raw["Sowing Period"] || raw["sowing_period"] || "";
   const harvestingPeriod = raw["Harvesting period"] || raw["harvesting_period"] || "";
+  const sowingMonthsCsv = raw["Sowing Months"] || raw["sowing_months"] || raw["sowing"] || "";
+  const harvestingMonthsCsv = raw["Harvesting Months"] || raw["harvesting_months"] || raw["harvesting"] || "";
+  const growingMonthsCsv = raw["Growing Months"] || raw["growing_months"] || raw["growing"] || "";
 
   let sowingMonths: number[];
   let harvestingMonths: number[];
 
   if (sowingPeriod) {
-    // Text-based period like "15th June - 15th Aug"
     sowingMonths = parsePeriodText(String(sowingPeriod));
   } else {
-    // Fallback: comma-separated month numbers
-    sowingMonths = parseMonthList(raw["sowing_months"] || raw["sowing"] || "");
+    sowingMonths = parseMonthList(String(sowingMonthsCsv));
   }
 
   if (harvestingPeriod) {
     harvestingMonths = parsePeriodText(String(harvestingPeriod));
   } else {
-    harvestingMonths = parseMonthList(raw["harvesting_months"] || raw["harvesting"] || "");
+    harvestingMonths = parseMonthList(String(harvestingMonthsCsv));
   }
 
-  // Compute growing months between sowing and harvesting
-  const growingMonths: number[] = [];
-  if (sowingMonths.length > 0 && harvestingMonths.length > 0) {
+  // Prefer explicit growing months if provided; otherwise compute from sowing/harvesting
+  const explicitGrowingMonths = parseMonthList(String(growingMonthsCsv));
+  const growingMonths: number[] = explicitGrowingMonths.length > 0 ? explicitGrowingMonths : [];
+  if (growingMonths.length === 0 && sowingMonths.length > 0 && harvestingMonths.length > 0) {
     const sowEnd = Math.max(...sowingMonths);
     const harvestStart = Math.min(...harvestingMonths);
     const sowSet = new Set(sowingMonths);
@@ -276,10 +278,14 @@ export async function uploadAndParseFile(formData: FormData) {
       for (const sheetName of workbook.SheetNames) {
         const sheet = workbook.Sheets[sheetName];
         const rawData = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: "" });
+        const hasSlNo = rawData.length > 0 && Object.prototype.hasOwnProperty.call(rawData[0], "Sl. No.");
         for (const row of rawData) {
-          const slNo = row["Sl. No."];
-          if (slNo === "" || slNo === "Sl. No." || isNaN(Number(slNo))) continue;
+          if (hasSlNo) {
+            const slNo = row["Sl. No."];
+            if (slNo === "" || slNo === "Sl. No." || isNaN(Number(slNo))) continue;
+          }
           const crop = (row["Crop"] || row["crop"] || "").trim();
+          if (!crop) continue;
           if (crop.endsWith(":") || (crop === crop.toUpperCase() && crop.length > 3)) continue;
 
           parsedRows.push(normalizeRow(row));
