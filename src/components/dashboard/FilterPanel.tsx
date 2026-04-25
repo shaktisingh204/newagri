@@ -41,19 +41,29 @@ export default function FilterPanel({ countries, crops, seasons, months, soilTyp
   const currentWaterRequirement = searchParams.get("waterRequirement") || "";
 
   useEffect(() => {
+    let cancelled = false;
+    setStates([]);
     if (currentCountry) {
-      getStatesForCountry(currentCountry).then(setStates);
-    } else {
-      setStates([]);
+      getStatesForCountry(currentCountry).then((s) => {
+        if (!cancelled) setStates(s);
+      });
     }
+    return () => {
+      cancelled = true;
+    };
   }, [currentCountry]);
 
   useEffect(() => {
+    let cancelled = false;
+    setDistricts([]);
     if (currentCountry && currentState) {
-      getDistrictsForState(currentCountry, currentState).then(setDistricts);
-    } else {
-      setDistricts([]);
+      getDistrictsForState(currentCountry, currentState).then((d) => {
+        if (!cancelled) setDistricts(d);
+      });
     }
+    return () => {
+      cancelled = true;
+    };
   }, [currentCountry, currentState]);
 
 
