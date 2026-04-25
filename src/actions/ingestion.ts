@@ -7,7 +7,6 @@ import { Region } from "@/models/Region";
 import { CropCalendar } from "@/models/CropCalendar";
 import { requireAdmin } from "@/lib/auth";
 import * as XLSX from "xlsx";
-import * as pdfParse from "pdf-parse";
 
 interface ParsedRow {
   cropName: string;
@@ -256,91 +255,95 @@ function normalizeRow(raw: Record<string, string>): ParsedRow {
 }
 
 export async function uploadAndParseFile(formData: FormData) {
-  const user = await requireAdmin();
-  await connectDB();
+  try {
+    const user = await requireAdmin();
+    await connectDB();
 
-  const file = formData.get("file") as File;
-  if (!file) return { error: "No file provided" };
+    const file = formData.get("file") as File;
+    if (!file) return { error: "No file provided" };
 
-  const fileName = file.name;
-  const ext = fileName.split(".").pop()?.toLowerCase();
-  if (ext !== "xlsx" && ext !== "pdf") {
-    return { error: "Only XLSX and PDF files are supported" };
-  }
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  let parsedRows: ParsedRow[] = [];
-
-  if (ext === "xlsx") {
-    const workbook = XLSX.read(buffer, { type: "buffer" });
-    // Parse all sheets
-    for (const sheetName of workbook.SheetNames) {
-      const sheet = workbook.Sheets[sheetName];
-      const rawData = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: "" });
-      for (const row of rawData) {
-        // Skip header rows (Sl. No. is not a number)
-        const slNo = row["Sl. No."];
-        if (slNo === "" || slNo === "Sl. No." || isNaN(Number(slNo))) continue;
-        // Skip category headers like "Pulses:", "OILSEEDS"
-        const crop = (row["Crop"] || row["crop"] || "").trim();
-        if (crop.endsWith(":") || (crop === crop.toUpperCase() && crop.length > 3)) continue;
-
-        parsedRows.push(normalizeRow(row));
-      }
+    const fileName = file.name;
+    const ext = fileName.split(".").pop()?.toLowerCase();
+    if (ext !== "xlsx" && ext !== "pdf") {
+      return { error: "Only XLSX and PDF files are supported" };
     }
-  } else {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pdf = (pdfParse as any).default || pdfParse;
-    const pdfData = await pdf(buffer);
-    const lines: string[] = pdfData.text.split("\n").filter((l: string) => l.trim());
-    for (const line of lines) {
-      const parts = line.split(",").map((s: string) => s.trim());
-      if (parts.length >= 7) {
-        parsedRows.push({
-          cropName: parts[0],
-          country: parts[1],
-          state: parts[2],
-          district: parts.length >= 8 ? parts[3] : "",
-          season: parts.length >= 8 ? parts[4] : parts[3],
-          sowingMonths: parseMonthList(parts.length >= 8 ? parts[5] : parts[4]),
-          growingMonths: parseMonthList(parts.length >= 8 ? parts[6] : parts[5]),
-          harvestingMonths: parseMonthList(parts.length >= 8 ? parts[7] : parts[6]),
-        });
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const parsedRows: ParsedRow[] = [];
+
+    if (ext === "xlsx") {
+      const workbook = XLSX.read(buffer, { type: "buffer" });
+      for (const sheetName of workbook.SheetNames) {
+        const sheet = workbook.Sheets[sheetName];
+        const rawData = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: "" });
+        for (const row of rawData) {
+          const slNo = row["Sl. No."];
+          if (slNo === "" || slNo === "Sl. No." || isNaN(Number(slNo))) continue;
+          const crop = (row["Crop"] || row["crop"] || "").trim();
+          if (crop.endsWith(":") || (crop === crop.toUpperCase() && crop.length > 3)) continue;
+
+          parsedRows.push(normalizeRow(row));
+        }
       }
-    }
-  }
-
-  const flaggedRows: { row: number; reason: string; data: Record<string, unknown> }[] = [];
-  const validData: ParsedRow[] = [];
-
-  parsedRows.forEach((row, i) => {
-    const validation = validateRow(row, i + 1);
-    if (validation.valid) {
-      validData.push(row);
     } else {
-      flaggedRows.push({ row: i + 1, reason: validation.reason!, data: row as unknown as Record<string, unknown> });
+      const { PDFParse } = await import("pdf-parse");
+      const parser = new PDFParse({ data: new Uint8Array(buffer) });
+      const pdfData = await parser.getText();
+      await parser.destroy();
+      const lines: string[] = pdfData.text.split("\n").filter((l: string) => l.trim());
+      for (const line of lines) {
+        const parts = line.split(",").map((s: string) => s.trim());
+        if (parts.length >= 7) {
+          parsedRows.push({
+            cropName: parts[0],
+            country: parts[1],
+            state: parts[2],
+            district: parts.length >= 8 ? parts[3] : "",
+            season: parts.length >= 8 ? parts[4] : parts[3],
+            sowingMonths: parseMonthList(parts.length >= 8 ? parts[5] : parts[4]),
+            growingMonths: parseMonthList(parts.length >= 8 ? parts[6] : parts[5]),
+            harvestingMonths: parseMonthList(parts.length >= 8 ? parts[7] : parts[6]),
+          });
+        }
+      }
     }
-  });
 
-  const upload = await Upload.create({
-    fileName,
-    fileType: ext as "pdf" | "xlsx",
-    status: "validated",
-    totalRows: parsedRows.length,
-    validRows: validData.length,
-    flaggedRows,
-    parsedData: validData,
-    tenantId: user.tenantId,
-    uploadedBy: user.userId,
-  });
+    const flaggedRows: { row: number; reason: string; data: Record<string, unknown> }[] = [];
+    const validData: ParsedRow[] = [];
 
-  return {
-    success: true,
-    uploadId: upload._id.toString(),
-    totalRows: parsedRows.length,
-    validRows: validData.length,
-    flaggedCount: flaggedRows.length,
-  };
+    parsedRows.forEach((row, i) => {
+      const validation = validateRow(row, i + 1);
+      if (validation.valid) {
+        validData.push(row);
+      } else {
+        flaggedRows.push({ row: i + 1, reason: validation.reason!, data: row as unknown as Record<string, unknown> });
+      }
+    });
+
+    const upload = await Upload.create({
+      fileName,
+      fileType: ext as "pdf" | "xlsx",
+      status: "validated",
+      totalRows: parsedRows.length,
+      validRows: validData.length,
+      flaggedRows,
+      parsedData: validData,
+      tenantId: user.tenantId,
+      uploadedBy: user.userId,
+    });
+
+    return {
+      success: true,
+      uploadId: upload._id.toString(),
+      totalRows: parsedRows.length,
+      validRows: validData.length,
+      flaggedCount: flaggedRows.length,
+    };
+  } catch (err) {
+    console.error("uploadAndParseFile failed:", err);
+    const message = err instanceof Error ? err.message : "Upload failed";
+    return { error: message };
+  }
 }
 
 export async function getUploadPreview(uploadId: string) {
